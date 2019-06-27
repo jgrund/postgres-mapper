@@ -108,11 +108,11 @@ Add the following to your `Cargo.toml`:
 ```toml
 [dependencies.postgres-mapper]
 features = ["tokio-postgres-support"]
-git = "https://github.com/zeyla/postgres-mapper"
+git = "https://github.com/rusty-crates/postgres-mapper"
 
 [dependencies.postgres-mapper-derive]
 features = ["postgres-mapper", "tokio-postgres-support"]
-git = "https://github.com/zeyla/postgres-mapper"
+git = "https://github.com/rusty-crates/postgres-mapper"
 ```
 
 This will derive implementations for converting from owned and referenced
