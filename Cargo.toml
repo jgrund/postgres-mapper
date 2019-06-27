@@ -1,5 +1,5 @@
 [package]
-authors = ["Zeyla Hellyer <hi@zeyla.me>"]
+authors = ["Zeyla Hellyer <zeyla@hellyer.dev>"]
 description = "Struct mapping for postgres."
 documentation = "https://docs.rs/postgres-mapper"
 homepage = "https://github.com/zeyla/postgres-mapper"
