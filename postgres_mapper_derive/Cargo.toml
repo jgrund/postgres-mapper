@@ -7,7 +7,7 @@ keywords = ["postgres", "mapper"]
 license = "ISC"
 name = "postgres-mapper-derive"
 repository = "https://github.com/zeyla/postgres-mapper.git"
-version = "0.1.0"
+version = "0.1.1"
 
 [lib]
 proc-macro = true
