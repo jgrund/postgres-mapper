@@ -1,15 +1,15 @@
-extern crate quote;
 extern crate proc_macro;
+extern crate quote;
 #[macro_use]
 extern crate syn;
 
 use proc_macro::TokenStream;
 use quote::Tokens;
 
+use syn::Data::*;
 use syn::DeriveInput;
 use syn::Meta::{List, NameValue};
 use syn::NestedMeta::{Literal, Meta};
-use syn::Data::*;
 
 use syn::{Fields, Ident};
 
@@ -26,15 +26,11 @@ fn impl_derive(ast: &DeriveInput) -> Tokens {
     #[allow(unused_mut)]
     let mut tokens = Tokens::new();
 
-
-
     #[allow(unused_variables)]
     let fields: &Fields = match ast.data {
-        Struct(ref s) => {
-            &s.fields
-        },
-        Enum(ref u) => {panic!("Enums can not be mapped")},
-        Union(ref u) => {panic!("Unions can not be mapped")},
+        Struct(ref s) => &s.fields,
+        Enum(ref u) => panic!("Enums can not be mapped"),
+        Union(ref u) => panic!("Unions can not be mapped"),
     };
 
     #[allow(unused_variables)]
@@ -67,144 +63,211 @@ fn impl_derive(ast: &DeriveInput) -> Tokens {
 
 #[cfg(feature = "postgres-support")]
 fn impl_from_row(t: &mut Tokens, struct_ident: &Ident, fields: &Fields) {
-    t.append(format!("
-impl<'a> From<::postgres::rows::Row<'a>> for {struct_name} {{
-    fn from(row: ::postgres::rows::Row<'a>) -> Self {{
-        Self {{", struct_name=struct_ident));
+    t.append(format!(
+        "
+impl From<::postgres::Row> for {struct_name} {{
+    fn from(row: ::postgres::Row) -> Self {{
+        Self {{",
+        struct_name = struct_ident
+    ));
 
     for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
 
-        t.append(format!("
-            {0}: row.get(\"{0}\"),", ident));
+        t.append(format!(
+            "
+            {0}: row.get(\"{0}\"),",
+            ident
+        ));
     }
 
-    t.append("
+    t.append(
+        "
         }
     }
-}");
+}",
+    );
 }
 
 #[cfg(feature = "postgres-support")]
 fn impl_from_borrowed_row(t: &mut Tokens, struct_ident: &Ident, fields: &Fields) {
-    t.append(format!("
-impl<'a> From<&'a ::postgres::rows::Row<'a>> for {struct_name} {{
-    fn from(row: &::postgres::rows::Row<'a>) -> Self {{
-        Self {{", struct_name=struct_ident));
+    t.append(format!(
+        "
+impl From<&::postgres::Row> for {struct_name} {{
+    fn from(row: &::postgres::Row) -> Self {{
+        Self {{",
+        struct_name = struct_ident
+    ));
 
     for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
 
-        t.append(format!("
-            {0}: row.get(\"{0}\"),", ident));
+        t.append(format!(
+            "
+            {0}: row.get(\"{0}\"),",
+            ident
+        ));
     }
 
-    t.append("
+    t.append(
+        "
         }
     }
-}");
+}",
+    );
 }
 
 #[cfg(all(feature = "postgres-support", feature = "postgres-mapper"))]
 fn impl_postgres_mapper(t: &mut Tokens, struct_ident: &Ident, fields: &Fields, table_name: &str) {
-    t.append(format!("
-impl ::postgres_mapper::FromPostgresRow for {struct_name} {{
-    fn from_postgres_row(row: ::postgres::rows::Row)
-        -> Result<Self, ::postgres_mapper::Error> {{
-        Ok(Self {{", struct_name=struct_ident));
-
-    for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
-
-        t.append(format!("
-            {0}: row.get_opt(\"{0}\").ok_or_else(|| ::postgres_mapper::Error::ColumnNotFound)??,", ident));
-    }
-
-    t.append("
-        })
-    }
-
-    fn from_postgres_row_ref(row: &::postgres::rows::Row)
-        -> Result<Self, ::postgres_mapper::Error> {
-        Ok(Self {");
-
-    for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
-
-        t.append(format!("
-            {0}: row.get_opt(\"{0}\").ok_or_else(|| ::postgres_mapper::Error::ColumnNotFound)??,", ident));
-    }
-
-    t.append("
-        })
-    }");
-
     t.append(format!(
-    "fn sql_table() -> String {{
-        \" {0} \".to_string()
-    }}"
-    , table_name));
+        "
+impl ::postgres_mapper::FromPostgresRow for {struct_name} {{
+    fn from_postgres_row(row: ::postgres::Row)
+        -> Result<Self, ::postgres_mapper::Error> {{
+        Ok(Self {{",
+        struct_name = struct_ident
+    ));
+
+    for field in fields {
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
+
+        t.append(format!(
+            "
+            {0}: row.try_get(\"{0}\")?,",
+            ident
+        ));
+    }
 
     t.append(
-    format!(
-    "fn sql_fields() -> String {{")
+        "
+        })
+    }
+
+    fn from_postgres_row_ref(row: &::postgres::Row)
+        -> Result<Self, ::postgres_mapper::Error> {
+        Ok(Self {",
     );
 
-    let field_name = fields.iter().map(|field| {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
-        format!("{0}.{1}", table_name, ident)
-    }).collect::<Vec<String>>().join(", ");
+    for field in fields {
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
+
+        t.append(format!(
+            "
+            {0}: row.try_get(\"{0}\")?,",
+            ident
+        ));
+    }
+
+    t.append(
+        "
+        })
+    }",
+    );
+
+    t.append(format!(
+        "fn sql_table() -> String {{
+        \" {0} \".to_string()
+    }}",
+        table_name
+    ));
+
+    t.append(format!("fn sql_fields() -> String {{"));
+
+    let field_name = fields
+        .iter()
+        .map(|field| {
+            let ident = field
+                .ident
+                .clone()
+                .expect("Expected structfield identifier");
+            format!("{0}.{1}", table_name, ident)
+        })
+        .collect::<Vec<String>>()
+        .join(", ");
 
     t.append(format!("\" {0} \".to_string()", field_name));
 
-    t.append(
-    "}"
-    );
+    t.append("}");
 
-    t.append("
-}");
+    t.append(
+        "
+}",
+    );
 }
 
 #[cfg(feature = "tokio-postgres-support")]
 fn impl_tokio_from_row(t: &mut Tokens, struct_ident: &Ident, fields: &Fields) {
-    t.append(format!("
-impl From<::tokio_postgres::rows::Row> for {struct_name} {{
-    fn from(row: ::tokio_postgres::rows::Row) -> Self {{
-        Self {{", struct_name=struct_ident));
+    t.append(format!(
+        "
+impl From<::tokio_postgres::Row> for {struct_name} {{
+    fn from(row: ::tokio_postgres::Row) -> Self {{
+        Self {{",
+        struct_name = struct_ident
+    ));
 
     for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
 
-        t.append(format!("
-            {0}: row.get(\"{0}\"),", ident));
+        t.append(format!(
+            "
+            {0}: row.get(\"{0}\"),",
+            ident
+        ));
     }
 
-    t.append("
+    t.append(
+        "
         }
     }
-}");
+}",
+    );
 }
 
 #[cfg(feature = "tokio-postgres-support")]
 fn impl_tokio_from_borrowed_row(t: &mut Tokens, struct_ident: &Ident, fields: &Fields) {
-    t.append(format!("
-impl<'a> From<&'a ::tokio_postgres::rows::Row> for {struct_name} {{
-    fn from(row: &'a ::tokio_postgres::rows::Row) -> Self {{
-        Self {{", struct_name=struct_ident));
+    t.append(format!(
+        "
+impl<'a> From<&'a ::tokio_postgres::Row> for {struct_name} {{
+    fn from(row: &'a ::tokio_postgres::Row) -> Self {{
+        Self {{",
+        struct_name = struct_ident
+    ));
 
     for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
 
-        t.append(format!("
-            {0}: row.get(\"{0}\"),", ident));
+        t.append(format!(
+            "
+            {0}: row.get(\"{0}\"),",
+            ident
+        ));
     }
 
-    t.append("
+    t.append(
+        "
         }
     }
-}");
+}",
+    );
 }
-
 
 #[cfg(all(feature = "tokio-postgres-support", feature = "postgres-mapper"))]
 fn impl_tokio_postgres_mapper(
@@ -213,62 +276,86 @@ fn impl_tokio_postgres_mapper(
     fields: &Fields,
     table_name: &str,
 ) {
-    t.append(format!("
-impl ::postgres_mapper::FromTokioPostgresRow for {struct_name} {{
-    fn from_tokio_postgres_row(row: ::tokio_postgres::rows::Row)
-        -> Result<Self, ::postgres_mapper::Error> {{
-        Ok(Self {{", struct_name=struct_ident));
-
-    for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
-
-        t.append(format!("
-            {0}: row.try_get(\"{0}\")?.ok_or_else(|| ::postgres_mapper::Error::ColumnNotFound)?,", ident));
-    }
-
-    t.append("
-        })
-    }
-
-    fn from_tokio_postgres_row_ref(row: &::tokio_postgres::rows::Row)
-        -> Result<Self, ::postgres_mapper::Error> {
-        Ok(Self {");
-
-    for field in fields {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
-
-        t.append(format!("
-            {0}: row.try_get(\"{0}\")?.ok_or_else(|| ::postgres_mapper::Error::ColumnNotFound)?,", ident));
-    }
-
-    t.append("
-        })
-    }");
-
     t.append(format!(
-    "fn sql_table() -> String {{
-        \" {0} \".to_string()
-    }}"
-    , table_name));
+        "
+impl ::postgres_mapper::FromTokioPostgresRow for {struct_name} {{
+    fn from_tokio_postgres_row(row: ::tokio_postgres::Row)
+        -> Result<Self, ::postgres_mapper::Error> {{
+        Ok(Self {{",
+        struct_name = struct_ident
+    ));
+
+    for field in fields {
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
+
+        t.append(format!(
+            "
+            {0}: row.try_get(\"{0}\")?.ok_or_else(|| ::postgres_mapper::Error::ColumnNotFound)?,",
+            ident
+        ));
+    }
 
     t.append(
-    format!(
-    "fn sql_fields() -> String {{")
+        "
+        })
+    }
+
+    fn from_tokio_postgres_row_ref(row: &::tokio_postgres::Row)
+        -> Result<Self, ::postgres_mapper::Error> {
+        Ok(Self {",
     );
 
-    let field_name = fields.iter().map(|field| {
-        let ident = field.ident.clone().expect("Expected structfield identifier");
-        format!("{0}.{1}", table_name, ident)
-    }).collect::<Vec<String>>().join(", ");
+    for field in fields {
+        let ident = field
+            .ident
+            .clone()
+            .expect("Expected structfield identifier");
+
+        t.append(format!(
+            "
+            {0}: row.try_get(\"{0}\")?.ok_or_else(|| ::postgres_mapper::Error::ColumnNotFound)?,",
+            ident
+        ));
+    }
+
+    t.append(
+        "
+        })
+    }",
+    );
+
+    t.append(format!(
+        "fn sql_table() -> String {{
+        \" {0} \".to_string()
+    }}",
+        table_name
+    ));
+
+    t.append(format!("fn sql_fields() -> String {{"));
+
+    let field_name = fields
+        .iter()
+        .map(|field| {
+            let ident = field
+                .ident
+                .clone()
+                .expect("Expected structfield identifier");
+            format!("{0}.{1}", table_name, ident)
+        })
+        .collect::<Vec<String>>()
+        .join(", ");
 
     t.append(format!("\" {0} \".to_string()", field_name));
 
-    t.append(
-    "}"
-    );
+    t.append("}");
 
-    t.append("
-}");
+    t.append(
+        "
+}",
+    );
 }
 
 fn get_mapper_meta_items(attr: &syn::Attribute) -> Option<Vec<syn::NestedMeta>> {
@@ -306,7 +393,6 @@ fn parse_table_attr(ast: &DeriveInput) -> String {
     let mut table_name: Option<String> = None;
 
     for meta_items in ast.attrs.iter().filter_map(get_mapper_meta_items) {
-
         for meta_item in meta_items {
             match meta_item {
                 // Parse `#[pg_mapper(table = "foo")]`
@@ -316,12 +402,10 @@ fn parse_table_attr(ast: &DeriveInput) -> String {
                     }
                 }
 
-                Meta(ref meta_item) => {
-                    panic!(format!(
-                        "unknown pg_mapper container attribute `{}`",
-                        meta_item.name()
-                    ))
-                }
+                Meta(ref meta_item) => panic!(format!(
+                    "unknown pg_mapper container attribute `{}`",
+                    meta_item.name()
+                )),
 
                 Literal(_) => {
                     panic!("unexpected literal in pg_mapper container attribute");
@@ -332,4 +416,3 @@ fn parse_table_attr(ast: &DeriveInput) -> String {
 
     table_name.expect("declare table name: #[pg_mapper(table = \"foo\")]")
 }
-

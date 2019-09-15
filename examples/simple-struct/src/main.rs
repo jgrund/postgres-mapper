@@ -1,29 +1,25 @@
-#[macro_use] extern crate postgres_mapper_derive;
-
-extern crate postgres;
-extern crate postgres_mapper;
-
-use postgres::{Connection, TlsMode};
+use postgres::{Client, NoTls};
 use std::error::Error;
 
-#[derive(Debug, PostgresMapper)]
+#[derive(Debug, postgres_mapper_derive::PostgresMapper)]
+#[pg_mapper(table = "user")]
 pub struct User {
     id: i32,
     name: String,
     email: Option<String>,
 }
 
-fn try_main() -> Result<(), Box<Error>> {
-    let conn = Connection::connect(
-        "postgresql://postgres@127.0.0.1:5432",
-        TlsMode::None,
-    )?;
+fn try_main() -> Result<(), Box<dyn Error>> {
+    let mut conn = Client::connect("postgresql://postgres@127.0.0.1:5432", NoTls)?;
 
-    conn.execute("create table if not exists users (
+    conn.execute(
+        "create table if not exists users (
         id serial primary key,
         name text not null,
         email text
-    )", &[])?;
+    )",
+        &[],
+    )?;
 
     conn.execute(
         "insert into users (name, email) values ($1, $2)",

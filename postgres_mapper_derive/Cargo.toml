@@ -8,6 +8,7 @@ license = "ISC"
 name = "postgres-mapper-derive"
 repository = "https://github.com/zeyla/postgres-mapper.git"
 version = "0.1.1"
+edition = "2018"
 
 [lib]
 proc-macro = true

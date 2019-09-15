@@ -108,14 +108,15 @@ extern crate postgres;
 #[cfg(feature = "tokio-postgres-support")]
 extern crate tokio_postgres;
 
+#[cfg(feature = "postgres-support")]
 use postgres::Error as PostgresError;
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[cfg(feature = "postgres-support")]
-use postgres::rows::Row as PostgresRow;
+use postgres::Row as PostgresRow;
 #[cfg(feature = "tokio-postgres-support")]
-use tokio_postgres::rows::Row as TokioRow;
+use tokio_postgres::Row as TokioRow;
 
 /// Trait containing various methods for converting from a postgres Row to a
 /// mapped type.
@@ -286,15 +287,15 @@ pub enum Error {
     ColumnNotFound,
     /// An error from the `tokio-postgres` crate while converting a type.
     #[cfg(feature = "tokio-postgres-support")]
-    Conversion(Box<StdError + Send + Sync>),
+    Conversion(Box<dyn StdError + Send + Sync>),
     /// An error from the `postgres` crate while converting a type.
     #[cfg(feature = "postgres-support")]
     Postgres(PostgresError),
 }
 
 #[cfg(feature = "tokio-postgres-support")]
-impl From<Box<StdError + Send + Sync>> for Error {
-    fn from(err: Box<StdError + Send + Sync>) -> Self {
+impl From<Box<dyn StdError + Send + Sync>> for Error {
+    fn from(err: Box<dyn StdError + Send + Sync>) -> Self {
         Error::Conversion(err)
     }
 }

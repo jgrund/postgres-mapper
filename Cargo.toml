@@ -8,6 +8,7 @@ license = "ISC"
 name = "postgres-mapper"
 repository = "https://github.com/rusty-crates/postgres-mapper.git"
 version = "0.1.1"
+edition = "2018"
 
 [lib]
 doctest = false
@@ -17,11 +18,11 @@ status = "actively-developed"
 
 [dependencies.postgres]
 optional = true
-version = "0.15"
+version = "0.16.0-rc.2"
 
 [dependencies.tokio-postgres]
 optional = true
-version = "0.3"
+version = "0.4.0-rc.3"
 
 [features]
 default = ["postgres-support"]

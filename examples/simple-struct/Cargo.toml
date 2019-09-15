@@ -2,10 +2,11 @@
 authors = ["Zeyla Hellyer <zey@zey.moe>"]
 name = "simple-struct"
 version = "0.1.0"
+edition = "2018"
 
 [dependencies]
-postgres = "~0.15"
-tokio-postgres = "*"
+postgres = "0.16.0-rc.2"
+tokio-postgres = "0.4.0-rc.3"
 
 [dependencies.postgres-mapper]
 features = ["postgres-support"]
